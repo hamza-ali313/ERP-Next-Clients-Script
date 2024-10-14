@@ -1,0 +1,21 @@
+frappe.ui.form.on('Employee Attendance', {
+    holiday_hour: function(frm) {
+        convert_hours_to_minutes(frm, 'holiday_hour', 'holiday_in_minutes');
+    },
+
+    early_over_time: function(frm) {
+        convert_hours_to_minutes(frm, 'early_over_time', 'eot_minutes');
+    },
+
+    approved_ot: function(frm) {
+        convert_hours_to_minutes(frm, 'approved_ot', 'aot_min');
+    }
+});
+
+function convert_hours_to_minutes(frm, hours_field, minutes_field) {
+    let hours = frm.doc[hours_field];
+    if (hours && !isNaN(hours)) {
+        let minutes = hours * 60;
+        frm.set_value(minutes_field, minutes);
+    }
+}
