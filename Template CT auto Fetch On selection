@@ -1,0 +1,39 @@
+frappe.ui.form.on('MainForm', {
+    linked_doc: function(frm) {
+        // Check if a specific linked_doc record is selected
+        if (frm.doc.linked_doc) {
+            // Fetch the selected LinkedDoctype record
+            frappe.call({
+                method: 'frappe.client.get',
+                args: {
+                    doctype: 'LinkedDoctype', // The linked Doctype
+                    name: frm.doc.linked_doc // The specific record selected in linked_doc
+                },
+                callback: function(response) {
+                    // Log the response for debugging
+                    console.log(response.message);
+
+                    if (response.message) {
+                        // Get the child table data from the linked record
+                        const linked_table_data = response.message.linked_table || [];
+
+                        // Clear the current main_table data on Form 1
+                        frm.clear_table("main_table");
+
+                        // Add each row from linked_table_data to main_table
+                        linked_table_data.forEach((row) => {
+                            let new_row = frm.add_child("main_table"); // Add a new row to main_table
+                            // Map the fields from the linked_table row to main_table row
+                            frappe.model.set_value(new_row.doctype, new_row.name, 'field_1', row.field_1);
+                            frappe.model.set_value(new_row.doctype, new_row.name, 'field_2', row.field_2);
+                            frappe.model.set_value(new_row.doctype, new_row.name, 'field_3', row.field_3);
+                        });
+
+                        // Refresh the main_table field to reflect the changes
+                        frm.refresh_field("main_table");
+                    }
+                }
+            });
+        }
+    }
+});
