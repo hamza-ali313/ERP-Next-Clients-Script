@@ -37,3 +37,39 @@ frappe.ui.form.on('MainForm', {
         }
     }
 });
+
+
+
+
+// The other version of code 
+
+frappe.ui.form.on('Assay Packaging Material', {
+    packaging_template: function(frm) {
+        if (frm.doc.packaging_template) {
+            frappe.call({
+                method: 'frappe.client.get',
+                args: {
+                    doctype: 'Assay Packaging Template',
+                    name: frm.doc.packaging_template
+                },
+                callback: function(r) {
+                    if (r.message) {
+                        const table = r.message.pack_temp || []; 
+                        frm.clear_table("table_ct");
+                        table.forEach((row) => {
+                            let new_row = frm.add_child("table_ct");
+                            new_row.package_material = row.package_material;
+                            new_row.height = row.height;
+                            new_row.length = row.length;
+                            new_row.width = row.width;
+                            new_row.weight = row.weight;
+                            new_row.stren_ply = row.stren_ply;
+                        });
+                        frm.refresh_field("table_ct");
+                    }
+                }
+            });
+        }
+    }
+});
+
