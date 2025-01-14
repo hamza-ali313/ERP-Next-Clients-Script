@@ -1,0 +1,80 @@
+// calculating the sum of fields in child table 
+
+frappe.ui.form.on('Salary Increment', {
+    validate:function(frm){
+        sumTotal(frm)
+    },
+})
+
+function sumTotal(frm) {
+    const totals = {
+        total_last_year_increment: 0,
+        current_net_salary: 0,
+        current_misc: 0,
+        current_barkat: 0,
+        current_net_misc_barkat: 0,
+        current_dressing: 0,
+        current_fuel: 0,
+        current_gross_salary: 0,
+        net_increase: 0,
+        misc_increase: 0,
+        barkat_increase: 0,
+        increase_nmb: 0,
+        dressing_increase: 0,
+        fuel_increase: 0,
+        gross_increase: 0,
+        perc_increase: 0,
+        new_salary: 0,
+        new_misc: 0,
+        new_barkat: 0,
+        new_nmb: 0,
+        new_dressing: 0,
+        new_fuel: 0,
+        new_gross: 0,
+    };
+
+    const childTable = frm.doc.salary_increment_table || [];
+
+    childTable.forEach((row) => {
+        totals.total_last_year_increment += parseFloat(row.last_year_increment || 0);
+        totals.current_net_salary += parseFloat(row.monthly_salary || 0);
+        totals.current_misc += parseFloat(row.misc || 0);
+        totals.current_barkat += parseFloat(row.barkat_ac || 0);
+        totals.current_net_misc_barkat += parseFloat(row.monthly_salary || 0) +
+                                          parseFloat(row.misc || 0) +
+                                          parseFloat(row.barkat_ac || 0);
+        totals.current_dressing += parseFloat(row.dressing || 0);
+        totals.current_fuel += parseFloat(row.fuel || 0);
+        totals.current_gross_salary += parseFloat(row.gross_salary || 0);
+
+        totals.net_increase += parseFloat(row.monthly_salary_amount || 0);
+        totals.misc_increase += parseFloat(row.misc_amount || 0);
+        totals.barkat_increase += parseFloat(row.barkat_ac_amount || 0);
+        totals.increase_nmb += parseFloat(row.monthly_salary_amount || 0) +
+                               parseFloat(row.misc_amount || 0) +
+                               parseFloat(row.barkat_ac_amount || 0);
+        totals.dressing_increase += parseFloat(row.dressing_amount || 0);
+        totals.fuel_increase += parseFloat(row.fuel_amount || 0);
+        totals.gross_increase += parseFloat(row.gross_salary_amount || 0);
+        totals.perc_increase += parseFloat(row.gross_salary_percentage || 0);
+
+        totals.new_salary += parseFloat(row.monthly_salary_after_increment || 0);
+        totals.new_misc += parseFloat(row.misc_after_increment || 0);
+        totals.new_barkat += parseFloat(row.bakat_ac_after_increment || 0);
+        totals.new_nmb += parseFloat(row.monthly_salary_after_increment || 0) +
+                          parseFloat(row.misc_after_increment || 0) +
+                          parseFloat(row.bakat_ac_after_increment || 0);
+        totals.new_dressing += parseFloat(row.dressing_after_increment || 0);
+        totals.new_fuel += parseFloat(row.fuel_after_increment || 0);
+        totals.new_gross += parseFloat(row.gross_salary_after_increment || 0);
+    });
+
+    // Set the calculated totals in the form
+    Object.keys(totals).forEach((key) => {
+        frm.set_value(key, totals[key]);
+    });
+}
+
+
+// ****************************************************************
+
