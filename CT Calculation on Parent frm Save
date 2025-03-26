@@ -1,0 +1,30 @@
+// packing List
+frappe.ui.form.on('Delivery Note', {
+    before_save: function(frm) {
+        if (frm.doc.custom_packing_list_ct && frm.doc.custom_packing_list_ct.length) {
+            frm.doc.custom_packing_list_ct.forEach(row => {
+                nwkg(frm, row);
+                gwkg(frm, row);
+            });
+        }
+    }
+});
+function nwkg(frm, row) {
+    // const row = locals[cdt][cdn];
+    console.log('running')
+    if (row.qty && row.pair_wt) {
+        const value = row.qty * row.pair_wt;
+        console.log("NWKG:", value);
+        frappe.model.set_value(row.doctype, row.name, 'nwkg', value);
+    }
+}
+
+function gwkg(frm, row) {
+    // const row = locals[cdt][cdn];
+    console.log('running')
+    if (row.ctn && row.nwkg) {
+        const value = row.ctn + row.nwkg;
+        console.log("GWKG:", value);
+        frappe.model.set_value(row.doctype, row.name, 'gwkg', value);
+    }
+}
