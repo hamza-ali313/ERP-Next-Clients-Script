@@ -1,0 +1,18 @@
+frappe.ui.form.on("Material Request", {
+    onload(frm) {
+        if (frm.doc.material_request_type === "Purchase") {
+            frm.doc.items.forEach(row => {
+                row.target_warehouse = "Stores";
+            });
+            frm.refresh_field("items");
+        }
+
+        if (frm.doc.material_request_type === "Material Transfer") {
+            frm.doc.items.forEach(row => {
+                row.source_warehouse = "Stores";
+                row.target_warehouse = "Work In Progress";
+            });
+            frm.refresh_field("items");
+        }
+    }
+});
