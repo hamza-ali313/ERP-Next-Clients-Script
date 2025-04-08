@@ -1,0 +1,22 @@
+frappe.ui.form.on('Packing List', {
+  refresh(frm) {
+    let running_total = 0;
+
+    frm.doc.pack_ct.forEach((row) => {
+      let from = running_total + 1;
+      let to = running_total + row.ctn;
+
+      // Format numbers with leading zeroes
+      let from_str = from.toString().padStart(3, '0');
+      let to_str = to.toString().padStart(3, '0');
+
+      let range = `${from_str} to ${to_str}`;
+
+      frappe.model.set_value(row.doctype, row.name, 'ctn_serial', range);
+
+      running_total = to;
+    });
+
+    frm.refresh_field('pack_ct');
+  }
+});
