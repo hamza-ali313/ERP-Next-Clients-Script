@@ -1,0 +1,26 @@
+frappe.ui.form.on('Journal Entry', {
+  voucher_type: function (frm) {
+    set_series(frm);
+  },
+  custom_type: function (frm) {
+    set_series(frm);
+  },
+  refresh: function (frm) {
+    set_series(frm);
+  }
+});
+
+function set_series(frm) {
+  const entryType = frm.doc.voucher_type;
+  const type = frm.doc.custom_type;
+
+  if (entryType === 'Bank Entry' && type === 'Pay') {
+    frm.set_value('naming_series', 'ACC-BPV-.YYYY.-');
+  } else if (entryType === 'Cash Entry' && type === 'Pay') {
+    frm.set_value('naming_series', 'ACC-CPV-.YYYY.-');
+  } else if (entryType === 'Bank Entry' && type === 'Receive') {
+    frm.set_value('naming_series', 'ACC-BRV-.YYYY.-');
+  } else if (entryType === 'Cash Entry' && type === 'Receive') {
+    frm.set_value('naming_series', 'ACC-CRV-.YYYY.-');
+  }
+}
