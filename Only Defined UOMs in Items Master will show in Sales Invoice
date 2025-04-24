@@ -1,0 +1,26 @@
+frappe.ui.form.on('Sales Invoice', {
+  refresh: function(frm) {
+    frm.doc.items.forEach(row => {
+      if (row.item_code) {
+        frappe.db.get_doc('Item', row.item_code).then(doc => {
+          let allowed_uoms = doc.uoms.map(u => u.uom);
+
+          // Set the UOM query for this specific row
+          frm.fields_dict.items.grid.get_field('uom').get_query = function(doc, cdt, cdn) {
+            return {
+              filters: {
+                name: ['in', allowed_uoms]
+              }
+            };
+          };
+
+          // Optionally set a default UOM
+          if (allowed_uoms.length > 0) {
+            frappe.model.set_value(row.doctype, row.name, 'uom', allowed_uoms[0]);
+          }
+        });
+      }
+    });
+  }
+});
+
