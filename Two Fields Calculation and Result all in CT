@@ -1,0 +1,17 @@
+frappe.ui.form.on('Sales Order Item', {
+	custom_box:function(frm,cdt,cdn){
+	    customQty(frm, cdt, cdn);
+	},
+	custom_carton_quantity:function(frm,cdt,cdn){
+	    customQty(frm, cdt, cdn);
+	}
+})
+
+function customQty(frm, cdt, cdn) {
+    const row = locals[cdt][cdn];
+    if (row.custom_box && row.custom_carton_quantity) {
+        const value = row.custom_box * row.custom_carton_quantity;
+        frappe.model.set_value(cdt, cdn, 'qty', parseFloat(value.toFixed(3)));
+        frm.refresh_field('items');
+    }
+}
