@@ -1,0 +1,39 @@
+frappe.ui.form.on('Employee', {
+    custom_taxable_salary: function(frm) {
+        calculate_tax(frm);
+    }
+});
+
+function calculate_tax(frm) {
+    const salary = frm.doc.custom_taxable_salary || 0;
+    const yearly = salary * 12;
+    let slab = "";
+    let tax = 0;
+
+    // Set yearly salary
+    frm.set_value('custom_yearly_salary_', yearly);
+
+    // Slab-wise Tax Calculation
+    if (yearly <= 600000) {
+        slab = "Slab 1";
+        tax = 0;
+    } else if (yearly > 600000 && yearly <= 1200000) {
+        slab = "Slab 2";
+        tax = (yearly - 600000) * 0.05;
+    } else if (yearly > 1200000 && yearly <= 2200000) {
+        slab = "Slab 3";
+        tax = 30000 + (yearly - 1200000) * 0.15;
+    } else if (yearly > 2200000 && yearly <= 3200000) {
+        slab = "Slab 4";
+        tax = 180000 + (yearly - 2200000) * 0.25;
+    } else if (yearly > 3200000 && yearly <= 4100000) {
+        slab = "Slab 5";
+        tax = 430000 + (yearly - 3200000) * 0.30;
+    } else {
+        slab = "Slab 6";
+        tax = 700000 + (yearly - 4100000) * 0.35;
+    }
+
+    frm.set_value('custom_tax_slab', slab);
+    frm.set_value('custom_income_taxe', tax / 12);
+}
