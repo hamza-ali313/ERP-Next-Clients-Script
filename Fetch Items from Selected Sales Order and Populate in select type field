@@ -1,0 +1,21 @@
+frappe.ui.form.on('Cutting Form', {
+    sales_order: function(frm) {
+        if (!frm.doc.sales_order) return;
+
+        frappe.call({
+            method: "frappe.client.get",
+            args: {
+                doctype: "Sales Order",
+                name: frm.doc.sales_order
+            },
+            callback: function(r) {
+                if (r.message) {
+                    const items = r.message.items;
+                    const item_names = items.map(item => item.item_name);
+                    frm.set_df_property("finish_item", "options", item_names.join("\n"));
+                }
+            }
+        });
+    }
+});
+
