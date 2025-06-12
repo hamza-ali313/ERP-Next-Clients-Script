@@ -1,0 +1,21 @@
+function Discount(frm, cdt, cdn) {
+    var item = locals[cdt][cdn];
+
+    if (item.discount_percentage) {
+        frappe.model.with_doc('Company', frm.doc.company, function () {
+            var company = frappe.get_doc('Company', frm.doc.company);
+            var defaultDiscountAccount = company.default_discount_account;
+            frappe.model.set_value(cdt, cdn, 'discount_account', defaultDiscountAccount);
+        });
+    }
+}
+
+frappe.ui.form.on('Sales Invoice', {
+    refresh: function(frm) {
+        frm.doc.items.forEach(item => {
+            if (item.discount_percentage) {
+                Discount(frm, item.doctype, item.name);
+            }
+        });
+    }
+});
