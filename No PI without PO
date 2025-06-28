@@ -1,0 +1,20 @@
+frappe.ui.form.on('Purchase Invoice', {
+    validate: function(frm) {
+        validate_po_for_item_group(frm);
+    }
+});
+
+function validate_po_for_item_group(frm) {
+    const RESTRICTED_ITEM_GROUPS = ["Accessories"];
+    const items = frm.doc.items || [];
+
+    for (let item of items) {
+        if (RESTRICTED_ITEM_GROUPS.includes(item.item_group) && !item.purchase_order) {
+            frappe.throw({
+                title: __('Validation Error'),
+                message: __('Purchase Order is mandatory for items in restricted item group(s): ') + 
+                         RESTRICTED_ITEM_GROUPS.join(", ")
+            });
+        }
+    }
+}
