@@ -1,0 +1,16 @@
+frappe.ui.form.on('Item', {
+    before_save: function(frm) {
+        let hs = frm.doc.hs_code || "";
+
+        // Remove non-digit characters (e.g., dot, spaces)
+        hs = hs.replace(/\D/g, '');
+
+        // Right-pad to 8 digits
+        hs = hs.padEnd(8, '0');
+
+        // Format as 0000.0000
+        let formatted = hs.substring(0, 4) + '.' + hs.substring(4, 8);
+
+        frm.set_value('hs_code', formatted);
+    }
+});
