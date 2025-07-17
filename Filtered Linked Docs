@@ -10,3 +10,24 @@ frappe.ui.form.on("Costing Form", {
       });
    }
 });
+
+// This is How Filters will be applied in Child tbale field filter
+frappe.ui.form.on('Payment Voucher', {
+    onload: function(frm) {
+        set_account_query(frm);
+    },
+
+    company: function(frm) {
+        set_account_query(frm);
+    }
+});
+
+function set_account_query(frm) {
+    frm.set_query('account', 'accounts', () => {
+        return {
+            filters: {
+                company: frm.doc.company
+            }
+       }
+    })
+}
