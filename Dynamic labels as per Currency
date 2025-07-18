@@ -1,3 +1,66 @@
+frappe.ui.form.on('Payment Voucher', {
+    onload: function(frm) {
+        if (frm.doc.currency && frm.doc.currency !== frappe.defaults.get_default("currency")) {
+            fetch_exchange_rate(frm);
+        }
+    },
+    currency: function(frm) {
+        fetch_exchange_rate(frm);
+        update_currency_labels(frm);
+    },
+    posting_date: function(frm) {
+        fetch_exchange_rate(frm);
+    },
+    exchange_rate: function(frm) {
+        update_converted_fields(frm);
+    },
+    validate: function(frm) {
+        update_totals(frm);
+    }
+});
+
+frappe.ui.form.on('Payment Voucher Items', {
+    debit(frm, cdt, cdn) {
+        update_row_converted(frm, cdt, cdn, frm.doc.exchange_rate);
+    },
+    credit(frm, cdt, cdn) {
+        update_row_converted(frm, cdt, cdn, frm.doc.exchange_rate);
+    },
+    accounts_remove: function(frm) {
+        update_totals(frm);
+    }
+});
+
+function fetch_exchange_rate(frm) {
+    if (!frm.doc.currency || !frm.doc.posting_date) return;
+
+    const base_currency = frappe.defaults.get_default("currency");
+    let from_currency = frm.doc.currency;
+    let to_currency = base_currency;
+
+    // If currency is PKR, convert to USD instead of default base currency
+    if (frm.doc.currency === "PKR") {
+        to_currency = "USD";
+    }
+
+    frappe.call({
+        method: "erpnext.setup.utils.get_exchange_rate",
+        args: {
+            from_currency: from_currency,
+            to_currency: to_currency,
+            transaction_date: frm.doc.posting_date
+        },
+        callback: function(r) {
+            if (r.message) {
+                frm.set_value('exchange_rate', r.message);
+                update_converted_fields(frm);
+            } else {
+                frappe.msgprint(__('No exchange rate found from {0} to {1}.', [from_currency, to_currency]));
+            }
+        }
+    });
+}
+
 function update_currency_labels(frm) {
     const base_currency = frappe.defaults.get_default("currency");
     const foreign_currency = frm.doc.currency || base_currency;
@@ -10,3 +73,94 @@ function update_currency_labels(frm) {
 
     frm.refresh_field('accounts');
 }
+
+function update_converted_fields(frm) {
+    let rate = flt(frm.doc.exchange_rate) || 1;
+
+    (frm.doc.accounts || []).forEach(row => {
+        row.converted_debit = flt(row.debit) * rate;
+        row.converted_credit = flt(row.credit) * rate;
+    });
+
+    frm.refresh_field('accounts');
+    update_totals(frm);
+}
+
+function update_row_converted(frm, cdt, cdn, rate) {
+    let row = locals[cdt][cdn];
+    rate = flt(rate) || 1;
+
+    row.converted_debit = flt(row.debit) * rate;
+    row.converted_credit = flt(row.credit) * rate;
+
+    frappe.model.set_value(cdt, cdn, 'converted_debit', row.converted_debit);
+    frappe.model.set_value(cdt, cdn, 'converted_credit', row.converted_credit);
+
+    update_totals(frm);
+}
+
+function update_totals(frm) {
+    let total_debit = 0;
+    let total_credit = 0;
+    let total_debit_oc = 0;
+    let total_credit_oc = 0;
+
+    (frm.doc.accounts || []).forEach(row => {
+        total_debit += flt(row.debit);
+        total_credit += flt(row.credit);
+        total_debit_oc += flt(row.converted_debit);
+        total_credit_oc += flt(row.converted_credit);
+    });
+
+    frm.set_value('total_debit', total_debit);
+    frm.set_value('total_credit', total_credit);
+    frm.set_value('total_debit_oc', total_debit_oc);
+    frm.set_value('total_credit_oc', total_credit_oc);
+}
+
+frappe.ui.form.on('Payment Voucher', {
+    voucher_type: function(frm) {
+        set_series(frm);
+    },
+    type: function(frm) {
+        set_series(frm);
+    }
+});
+
+function set_series(frm) {
+  const entryType = frm.doc.voucher_type;
+  const type = frm.doc.type;
+
+  if (entryType === 'Bank Entry' && type === 'Pay') {
+    frm.set_value('naming_series', 'BPV-.YYYY.-');
+  } else if (entryType === 'Cash Entry' && type === 'Pay') {
+    frm.set_value('naming_series', 'CPV-.YYYY.-');
+  } else if (entryType === 'Bank Entry' && type === 'Receive') {
+    frm.set_value('naming_series', 'BRV-.YYYY.-');
+  } else if (entryType === 'Cash Entry' && type === 'Receive') {
+    frm.set_value('naming_series', 'CRV-.YYYY.-');
+  }
+}
+
+
+frappe.ui.form.on('Payment Voucher', {
+    onload: function(frm) {
+        set_account_query(frm);
+    },
+
+    company: function(frm) {
+        set_account_query(frm);
+    }
+});
+
+function set_account_query(frm) {
+    frm.set_query('account', 'accounts', () => {
+        return {
+            filters: {
+                company: frm.doc.company
+            }
+       }
+    })
+}
+
+
