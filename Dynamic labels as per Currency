@@ -1,0 +1,12 @@
+function update_currency_labels(frm) {
+    const base_currency = frappe.defaults.get_default("currency");
+    const foreign_currency = frm.doc.currency || base_currency;
+    let converted_currency = (foreign_currency === "PKR") ? "USD" : base_currency;
+
+    frm.fields_dict.accounts.grid.update_docfield_property('debit', 'label', `Debit (${foreign_currency})`);
+    frm.fields_dict.accounts.grid.update_docfield_property('credit', 'label', `Credit (${foreign_currency})`);
+    frm.fields_dict.accounts.grid.update_docfield_property('converted_debit', 'label', `Debit (${converted_currency})`);
+    frm.fields_dict.accounts.grid.update_docfield_property('converted_credit', 'label', `Credit (${converted_currency})`);
+
+    frm.refresh_field('accounts');
+}
