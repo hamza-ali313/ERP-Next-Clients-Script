@@ -1,0 +1,44 @@
+/********************************************************/
+
+📝 Scenario: Linking Complaint Management to Sales Order in ERPNext
+✅ Objective:
+Create a Sales Order from a Complaint Management form only when:
+
+Field visit_status == "Work Order Received"
+Field work_order_no is not already set
+
+💡 What this does:
+On the Complaint Management form, when the form is refreshed:
+If the visit_status is "Work Order Received" and no work_order_no is set,
+A custom button "Create Sales Order" is shown.
+When clicked:
+It opens a new Sales Order form (frappe.new_doc) and pre-fills:
+customer from customer_id field in Complaint
+custom_complaint_management_no from the current Complaint document’s name
+/********************************************************/
+
+frappe.ui.form.on('Complaint Management', {
+    refresh: function(frm) {
+        if (frm.doc.visit_status === "Work Order Received" && !frm.doc.work_order_no) {
+            frm.add_custom_button("Create Sales Order", () => {
+                frappe.new_doc("Sales Order", {
+                    customer: frm.doc.customer_id,
+                    custom_complaint_management_no: frm.doc.name,
+                });
+            }, __("Actions"));
+        }
+    }
+});
+
+
+/********************************************************/
+What this does:
+On Sales Order submission (or save):
+If a Complaint reference (custom_complaint_management_no) exists in the Sales Order,
+It updates the linked Complaint’s work_order_no field with the current Sales Order's name
+
+/********************************************************/
+
+
+if doc.custom_complaint_management_no:
+    frappe.db.set_value("Complaint Management", doc.custom_complaint_management_no, "work_order_no", doc.name)
