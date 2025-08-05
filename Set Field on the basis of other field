@@ -1,0 +1,13 @@
+frappe.ui.form.on('Survey', {
+    nature: function(frm) {
+        const nature = frm.doc.nature;
+
+        if (nature === "Residential") {
+            frm.set_value("survey_template", "Residential Property Template");
+        } else if (nature === "Commercial") {
+            frm.set_value("survey_template", "Commercial Property Template");
+        } else {
+            frm.set_value("survey_template", "");
+        }
+    }
+});
