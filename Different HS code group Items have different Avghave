@@ -1,0 +1,40 @@
+// For multiple HS code different Average Values start
+
+frappe.ui.form.on('Custom Invoice', {
+    before_save: function(frm) {
+        let hsCodeGroups = {};
+
+        (frm.doc.ct_ || []).forEach(item => {
+            const hs = item.hs_code || "N/A";
+
+            if (!hsCodeGroups[hs]) {
+                hsCodeGroups[hs] = {
+                    rate: 0,
+                    count: 0,
+                    avg:0
+                };
+            }
+            
+            hsCodeGroups[hs].rate += parseFloat(item.rate);
+            hsCodeGroups[hs].count += parseFloat(item.quantity);
+        });
+        
+        frm.clear_table("hs_table");
+        
+        for (const hs in hsCodeGroups) {
+            const group = hsCodeGroups[hs];
+            let row = frm.add_child("hs_table");
+            row.hs_code = hs;
+            row.total_rate = group.rate;
+            row.total_qty = group.count;
+            row.avg_rate = group.rate / group.count;
+        }
+
+        // Step 5: Refresh child table field
+        frm.refresh_field("hs_table");
+        
+         console.log(hsCodeGroups)
+    }
+});
+
+// For multiple HS code different Average Values End
