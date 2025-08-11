@@ -1,0 +1,13 @@
+frappe.ui.form.on('Payment Entry', {
+  before_save: function(frm) {
+    let posting_date = frm.doc.posting_date;
+    if (posting_date) {
+      let date = new Date(posting_date);
+      let day = String(date.getDate()).padStart(2, '0');
+      let month = String(date.getMonth() + 1).padStart(2, '0'); // Months are 0-based
+      let year = date.getFullYear();
+      let formatted = `${day}/${month}/${year}`;
+       frm.set_value("custom_data", formatted);
+    }
+  }
+});
