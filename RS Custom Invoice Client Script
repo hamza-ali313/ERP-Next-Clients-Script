@@ -1,0 +1,272 @@
+frappe.ui.form.on('Custom Invoice', {
+    amount: function(frm) {
+        calculate_price(frm);
+    },
+    qty: function(frm) {
+        calculate_price(frm);
+    }
+});
+
+function calculate_price(frm) {
+    if (frm.doc.amount && frm.doc.qty && frm.doc.qty != 0) {
+        let price = frm.doc.amount / frm.doc.qty;
+        frm.set_value('price', price);
+    }
+}
+// frappe.ui.form.on('Custom Invoice', {
+//     bank_name: function(frm) {
+//         fetch_iban(frm);
+//     },
+//     sales_invoice_number: function(frm) {
+//         // Jab sales invoice number change ho to bank_name bhi set hoga
+//         // to fetch_iban function ko bhi yahan call karen taake iban set ho jaye
+//         fetch_iban(frm);
+//     }
+// });
+
+// frappe.ui.form.on('Custom Invoice', {
+//     bank_name: function(frm) {
+//         if (frm.doc.bank_name) {
+//             frappe.db.get_doc('Bank Account', frm.doc.bank_name)
+//                 .then(doc => {
+//                     if (doc.iban) {
+//                         frm.set_value('iban', doc.iban);
+//                     } else {
+//                         frappe.msgprint(__('IBAN not found in selected Bank Account.'));
+//                     }
+//                 })
+//                 .catch(err => {
+//                     console.error(err);
+//                     frappe.msgprint(__('Failed to fetch IBAN from Bank Account.'));
+//                 });
+//         }
+//     }
+// });
+
+frappe.ui.form.on('Custom Invoice', {
+    invoice_no: function(frm) {
+        console.log(frm.doc.invoice_no)
+        if (frm.doc.invoice_no) {
+            frappe.db.get_doc('Sales Invoice', frm.doc.invoice_no)
+                .then(sales_invoice => {
+                    console.log(sales_invoice)
+                    if (sales_invoice.branch){
+                        console.log(sales_invoice.branch)
+                        frappe.db.get_doc('Branch', sales_invoice.branch)
+                            .then(branch_doc => {
+                                // console.log(branch_doc)
+                                if (branch_doc.custom_ntn) {
+                                    // console.log(branch_doc.custom_ntn)
+                                    frm.set_value('ntn_no', branch_doc.custom_ntn);
+                                } else {
+                                    frm.set_value('ntn_no', '');
+                                    frappe.msgprint(__('NTN No not found in selected Branch.'));
+                                }
+                            })
+                            .catch(err => {
+                                console.error(err);
+                                frappe.msgprint(__('Failed to fetch Branch details.'));
+                            });
+                    } else {
+                        frm.set_value('ntn_no', '');
+                        frappe.msgprint(__('Branch not found in Sales Invoice.'));
+                    }
+                })
+                .catch(err => {
+                    console.error(err);
+                    frappe.msgprint(__('Failed to fetch Sales Invoice.'));
+                });
+        } else {
+            frm.set_value('ntn_no', '');
+        }
+    }
+});
+frappe.ui.form.on('Custom Invoice', {
+    before_save: function (frm) {
+        let total_ = 0;
+        if (frm.doc.ct_ && frm.doc.ct_.length > 0) {
+            frm.doc.ct_.forEach(row => {
+                if (row.quantity) {
+                    total_ += row.quantity ; // Convert DZN to units
+                }
+            });
+        }
+        let total = total_;
+        frm.set_value('total_qty', total);
+    }
+});
+// frappe.ui.form.on('Custom Invoice', {
+//     before_save: function (frm) {
+//         let totalPRS = 0;
+
+//         if (frm.doc.ct_ && frm.doc.ct_.length > 0) {
+//             frm.doc.ct_.forEach(row => {
+//                 if (row.unit === "PRS" && row.quantity) {
+//                     totalPRS += Number(row.quantity);
+//                 }
+//             });
+//         }
+
+//         frm.set_value('total_qty', totalPRS);
+//     }
+// });
+
+
+
+
+
+frappe.ui.form.on('Custom Invoice', {
+
+    invoice_no: function(frm) {
+        if (frm.doc.invoice_no) {
+            frappe.call({
+                method: 'frappe.client.get',
+                args: {
+                    doctype: 'Sales Invoice',
+                    name: frm.doc.invoice_no
+                },
+                callback: function(r) {
+                    if (r.message) {
+                        const table = r.message.items || []; 
+                        frm.clear_table("ct_");
+                        table.forEach((row) => {
+                            let new_row = frm.add_child("ct_");
+                            new_row.quantity = row.qty;
+                            new_row.rate = row.amount;
+                            new_row.uom = row.uom;
+                            new_row.hs_code = row.custom_hs_code;
+                        });
+                        frm.refresh_field("ct_");
+                    }
+                }
+            });
+        }
+    }
+})
+    // fetching all items from CT 
+    
+    // For multiple HS code different Average Values start
+frappe.ui.form.on('Custom Invoice', {
+    
+    invoice_no: function(frm) {
+        let hsCodeGroups = {};
+
+        (frm.doc.ct_ || []).forEach(item => {
+            const hs = item.hs_code || "N/A";
+
+            if (!hsCodeGroups[hs]) {
+                hsCodeGroups[hs] = {
+                    desc:"",
+                    uom:"",
+                    rate: 0,
+                    count: 0
+                };
+            }
+            
+            if(!hsCodeGroups[hs].desc) {
+                hsCodeGroups[hs].desc = item.item_description
+            }
+            
+            if(!hsCodeGroups[hs].uom) {
+                hsCodeGroups[hs].uom = item.uom
+            }
+            hsCodeGroups[hs].rate += parseFloat(item.rate);
+            hsCodeGroups[hs].count += parseFloat(item.quantity);
+        });
+        
+        frm.clear_table("hs_table");
+        
+        for (const hs in hsCodeGroups) {
+            const group = hsCodeGroups[hs];
+            let row = frm.add_child("hs_table");
+            row.item_description = group.desc;
+            row.uom = "PRS";
+            row.hs_code = hs;
+            row.total_rate = flt(group.rate, 4);
+            if(group.uom === "PCS") {
+                row.total_qty = group.count / 2;
+            }else if(group.uom === "DZN") {
+                row.total_qty = group.count * 12;
+            }else if(group.uom === "PRS"){
+                row.total_qty = group.count;
+            }
+            row.avg_rate = flt(group.rate / group.count, 4);
+        }
+
+        // Step 5: Refresh child table field
+        frm.refresh_field("hs_table");
+        
+         console.log(hsCodeGroups)
+    }
+    // For multiple HS code different Average Values End
+});
+
+
+frappe.ui.form.on("Custom Invoice", {
+    sales_invoice: function(frm) {
+        let tax_amount = 0
+        if (frm.doc.sales_invoice) {
+            frappe.call({
+                method: "frappe.client.get",
+                args: {
+                    doctype: "Sales Invoice",
+                    name: frm.doc.sales_invoice
+                },
+                callback: function(r) {
+                    if (r.message) {
+                        let invoice = r.message;
+                        (invoice.taxes || []).forEach(tax => {
+                            if (tax.account_head === "Freight Charges - RA&S") {
+                                tax_amount += tax.total 
+                            }
+                        });
+                    }
+                }
+            });
+        }
+        frm.set_value("tax", tax_amount);
+    }
+});
+
+
+frappe.ui.form.on("Custom Invoice", {
+    before_save: function(frm) {
+            let total = 0;
+            
+            (frm.doc.hs_table || []).forEach(row => {
+                total += row.total_rate || 0;
+            });
+
+            let tax = frm.doc.tax || 0;
+
+            frm.set_value("total_amount", total);
+            frm.set_value("grand_total", total + tax);
+    }
+});
+
+
+
+
+
+const branch_to_letter_head = {
+    "Rasheed Ahmed & Sons": "Rasheed Ahmed & Sons",
+    "FINE GRIP IMPORT EXPORT": "Fine Grip",
+    "ALIF INTERNATIONAL": "Alif",
+    "Rsafe Gloves": "Rsafe",  // <-- actual letter head name
+    "Evermore Hand Protection": "Evermore",
+    "Xpro Safety Pakistan": "Xpro",
+    "MECWEST SAFETY PAKISTAN": "Mecwest"
+};
+
+frappe.ui.form.on('Custom Invoice', {
+    branch: function(frm) {
+        const selected_branch = frm.doc.branch;
+        const letter_head_name = branch_to_letter_head[selected_branch];
+
+        if (letter_head_name) {
+            frm.set_value('letter_head', letter_head_name);
+        } else {
+            frappe.msgprint('No matching letter head found for this branch.');
+        }
+    }
+});
