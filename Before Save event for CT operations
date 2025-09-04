@@ -1,5 +1,52 @@
-before_save: function(frm){
+function computeCTN(frm, cdt, cdn) {
+    const row = locals[cdt][cdn];
+    if (row.qty && row.packing) {
+        const value = row.qty / row.packing;
+        frappe.model.set_value(cdt, cdn, 'custom_ctn_', parseFloat(value.toFixed(3)));
+        frm.refresh_field('items');
+    }
+}
+
+function computeCbmVol(frm, cdt, cdn) {
+    const row = locals[cdt][cdn];
+    if (row.custom_ctn_ && row.custom_cbm_) {
+        const value = row.custom_ctn_ * row.custom_cbm_;
+        frappe.model.set_value(cdt, cdn, 'custom_cbm_volume', parseFloat(value.toFixed(3)));
+        frm.refresh_field('items');
+    }
+}
+
+
+frappe.ui.form.on('Sales Order',{
+     refresh: function(frm){
         frm.doc.items.forEach(row => {
-            function Name(frm, row.doctype, row.name);
+                computeCTN(frm, row.doctype, row.name);
+                computeCbmVol(frm, row.doctype, row.name);
+            });
+    },
+    before_save: function(frm){
+        frm.doc.items.forEach(row => {
+            computeCTN(frm, row.doctype, row.name);
+            computeCbmVol(frm, row.doctype, row.name);
         });
     }
+})
+frappe.ui.form.on('Sales Order', {
+    packing: function(frm, cdt, cdn) {
+        computeCTN(frm, cdt, cdn);
+    },
+    qty: function(frm, cdt, cdn) {
+        computeCTN(frm, cdt, cdn);
+    },
+    custom_ctn_: function(frm, cdt, cdn) {
+        computeCbmVol(frm, cdt, cdn);
+    },
+    custom_cbm_: function(frm, cdt, cdn) {
+        computeCbmVol(frm, cdt, cdn);
+    },
+    item_code: function(frm, cdt, cdn) {
+        setTimeout(() => {
+            computeCbmVol(frm, cdt, cdn);
+        }, 100);
+    }
+});
