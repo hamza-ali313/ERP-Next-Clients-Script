@@ -1,0 +1,5 @@
+before_save: function(frm){
+        frm.doc.items.forEach(row => {
+            function Name(frm, row.doctype, row.name);
+        });
+    }
