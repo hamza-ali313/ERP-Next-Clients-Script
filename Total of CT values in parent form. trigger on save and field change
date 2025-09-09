@@ -1,0 +1,36 @@
+frappe.ui.form.on("Stock Reconciliation", {
+    before_save: function(frm) {
+        calculate_totals(frm);
+    }
+});
+
+frappe.ui.form.on("Stock Reconciliation Item", {
+    kg: function(frm, cdt, cdn) {
+        calculate_totals(frm);
+    },
+    lbs: function(frm, cdt, cdn) {
+        calculate_totals(frm);
+    },
+    bag: function(frm, cdt, cdn) {
+        calculate_totals(frm);
+    },
+    items_remove: function(frm) {
+        calculate_totals(frm);
+    }
+});
+
+function calculate_totals(frm) {
+    let total_kg = 0, total_lbs = 0, total_bag = 0;
+
+    (frm.doc.items || []).forEach(row => {
+        total_kg += row.kg || 0;
+        total_lbs += row.lbs || 0;
+        total_bag += row.bag || 0;
+    });
+
+    frm.set_value("kg", total_kg);
+    frm.set_value("lbs", total_lbs);
+    frm.set_value("bag", total_bag);
+
+    refresh_field(["kg", "lbs", "bag"]);
+}
