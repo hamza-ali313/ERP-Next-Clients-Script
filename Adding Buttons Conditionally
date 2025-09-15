@@ -1,0 +1,19 @@
+function set_get_items_button(frm) {
+    frm.clear_custom_buttons();  // remove old buttons first
+
+    if (frm.doc.igp_type === "Purchase Order") {
+        frm.add_custom_button(__('Get Items from Purchase Order'), function() {
+            open_multi_select_dialog(frm, "Purchase Order", "supplier");
+        });
+    }
+    else if (frm.doc.igp_type === "Delivery Note") {
+        frm.add_custom_button(__('Get Items from Delivery Note'), function() {
+            open_multi_select_dialog(frm, "Delivery Note", "customer");
+        });
+    }
+    else if (frm.doc.igp_type === "Stock Entry") {
+        frm.add_custom_button(__('Get Items from Stock Entry'), function() {
+            open_multi_select_dialog(frm, "Stock Entry");   // no party field for stock entry
+        });
+    }
+}
