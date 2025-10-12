@@ -1,0 +1,272 @@
+frappe.ui.form.on("Weaving Item", {
+    weight: function(frm, cdt, cdn) {
+        calculate_fields(frm, cdt, cdn);
+    },
+    greigh_weight: function(frm, cdt, cdn) {
+        calculate_fields(frm, cdt, cdn);
+    },
+    quantity: function(frm, cdt, cdn) {
+        calculate_fields(frm, cdt, cdn);
+    },
+    averate_waste: function(frm, cdt, cdn) {
+        calculate_fields(frm, cdt, cdn);
+    }
+});
+
+function calculate_fields(frm, cdt, cdn) {
+    let row = locals[cdt][cdn];
+    
+    let greigh_percent = flt(row.greigh_weight) / 100;
+    let waste_percent = flt(row.averate_waste) / 100;
+
+    row.greigh_quality = flt(row.weight) + (flt(row.weight) * greigh_percent);
+    row.kg = flt(row.quantity) * flt(row.greigh_quality);
+    row.lbs = flt(row.kg) * 2.2046;
+    row.lbs_waste = flt(row.lbs) * waste_percent;
+    row.total = flt(row.lbs) + flt(row.lbs_waste);
+    frm.refresh_field("weaving_item");
+}
+
+frappe.ui.form.on('Weaving Item', {
+    add_raw(frm, cdt, cdn) {
+        let weaving_row = locals[cdt][cdn];
+
+        let d = new frappe.ui.Dialog({
+            title: "Add Weaving Raw Materials",
+            fields: [
+                {
+                    fieldname: 'raw_items',
+                    fieldtype: 'Table',
+                    label: 'Raw Materials',
+                    cannot_add_rows: 0,
+                    in_place_edit: true,
+                    reqd: 1,
+                    fields: [
+                        {
+                            fieldname: 'item_code',
+                            fieldtype: 'Link',
+                            label: 'Item Code',
+                            options: 'Item',
+                            in_list_view: 1,
+                            reqd: 1,
+                            columns:2
+                        },
+                        {
+                            fieldname: 'po_loom',
+                            fieldtype: 'Link',
+                            label: 'PO Loom',
+                            options: 'Loom',
+                            in_list_view: 1,
+                            columns:2
+                        },
+                        {
+                            fieldname: 'brand_name',
+                            fieldtype: 'Link',
+                            label: 'Brand Name',
+                            options: 'Brand',
+                            in_list_view: 1,
+                            columns:1
+                        },
+                            {
+                            fieldname: 'color_name',
+                            fieldtype: 'Link',
+                            label: 'Color Name',
+                            options: 'Color',
+                            in_list_view: 1,
+                            columns:1,
+                            default: 'GREIGH YARN'
+                        },
+                        {
+                            fieldname: 'cons_percent',
+                            fieldtype: 'Float',
+                            label: 'Cons %',
+                            in_list_view: 1,
+                            default: 100,
+                            columns:1
+                        },
+                        {
+                            fieldname: 'wastage',
+                            fieldtype: 'Percent',
+                            label: 'Wastage %',
+                            in_list_view: 1,
+                            default: weaving_row.averate_waste,
+                            columns:2,
+                            read_only:1
+                        },
+                        {
+                            fieldname: 'finished_item_ref',
+                            fieldtype: 'Data',
+                            label: 'Finished Item Ref',
+                            in_list_view: 1,
+                            default: weaving_row.item_code,
+                            columns:1,
+                            read_only:1,
+                            hidden:1
+                        },
+                    ]
+                }
+            ],
+            size: 'extra-large',
+            primary_action_label: "Add to Weaving Raw",
+            primary_action(values) {
+                let raw_items = values.raw_items || [];
+                let finished_ref = weaving_row.item_code; // reference for this finished item
+                console.log(finished_ref)
+                // Step 1: Calculate existing total only for this finished item
+                let existing_total = 0;
+                (frm.doc.weaving_raw || []).forEach(r => {
+                    if (r.finished_item_reference === finished_ref) {
+                        existing_total += flt(r.cons_percent);
+                    }
+                });
+            
+                // Step 2: Calculate new total including popup rows
+                let new_total = existing_total;
+                raw_items.forEach(r => {
+                    new_total += flt(r.cons_percent);
+                    r.total_lbs = flt(weaving_row.total) * (flt(r.cons_percent) / 100);
+                    r.finish_unit = flt(r.total_lbs / 100).toFixed(2);
+                });
+            
+                // Step 3: Validate that combined total does not exceed 100%
+                if (new_total > 100) {
+                    frappe.throw(`Total Consumption % cannot exceed 100%. Current total would be ${new_total}%`);
+                }
+            
+                // Step 4: Add to Weaving Raw child table
+                raw_items.forEach(r => {
+                    let new_row = frm.add_child('weaving_raw');
+                    frappe.model.set_value(new_row.doctype, new_row.name, 'item_code', r.item_code);
+                    frappe.model.set_value(new_row.doctype, new_row.name, 'item_name', r.item_name);
+                    frappe.model.set_value(new_row.doctype, new_row.name, 'po_loom', r.po_loom);
+                    frappe.model.set_value(new_row.doctype, new_row.name, 'cons_percent', r.cons_percent);
+                    frappe.model.set_value(new_row.doctype, new_row.name, 'wastage', r.wastage);
+                    frappe.model.set_value(new_row.doctype, new_row.name, 'brand_name', r.brand_name);
+                    frappe.model.set_value(new_row.doctype, new_row.name, 'color_name', r.color_name);
+                    frappe.model.set_value(new_row.doctype, new_row.name, 'total_lbs', r.total_lbs);
+                    frappe.model.set_value(new_row.doctype, new_row.name, 'bags', r.finish_unit);
+                    frappe.model.set_value(new_row.doctype, new_row.name, 'finished_item_reference', r.finished_item_ref);
+                });
+            
+                frm.refresh_field('weaving_raw');
+                d.hide();
+            }
+        });
+
+        d.fields_dict.raw_items.grid.wrapper.on('change', '[data-fieldname="item_code"]', function () {
+            let grid_row = d.fields_dict.raw_items.grid.get_selected_children()[0] 
+                        || d.fields_dict.raw_items.grid.get_selected()[0];
+
+            if (grid_row && grid_row.item_code) {
+                frappe.db.get_value('Item', grid_row.item_code, 'item_name', (r) => {
+                    if (r && r.item_name) {
+                        frappe.model.set_value(grid_row.doctype, grid_row.name, 'item_name', r.item_name);
+                    }
+                });
+            }
+        });
+
+        d.show();
+    }
+});
+
+
+
+
+// Filtering 
+
+// frappe.ui.form.on("Weaving Item", {
+//     is_selected: function(frm, cdt, cdn) {
+//         let row = locals[cdt][cdn];
+
+//         // When one finished item is selected
+//         if (row.is_selected) {
+//             // Uncheck all other rows
+//             frm.doc.weaving_item.forEach(r => {
+//                 if (r.name !== row.name) r.is_selected = 0;
+//             });
+//             frm.refresh_field("weaving_item");
+
+//             // Set active finished item on parent
+//             frm.set_value("active_finished_item", row.item_code);
+//         } else {
+//             frm.set_value("active_finished_item", null);
+//         }
+//     }
+// });
+
+// frappe.ui.form.on("Weaving Contract", {   // replace with your main Doctype name
+//     active_finished_item: function(frm) {
+//         if (!frm.doc.active_finished_item) return;
+
+//         // Filter the Weaving Raw table instantly
+//         const filtered_raw = (frm.doc.weaving_raw || []).filter(r => {
+//             return r.finished_item_reference === frm.doc.active_finished_item;
+//         });
+
+//         // Replace table content dynamically
+//         frm.clear_table("weaving_raw");
+//         filtered_raw.forEach(r => {
+//             let new_row = frm.add_child("weaving_raw");
+//             Object.assign(new_row, r);
+//         });
+
+//         frm.refresh_field("weaving_raw");
+//         frappe.show_alert({
+//             message: `Filtered raw materials for ${frm.doc.active_finished_item}`,
+//             indicator: "green"
+//         });
+//     }
+// });
+
+
+
+frappe.ui.form.on("Weaving Contract", {
+    refresh(frm) {
+        frm.add_custom_button("Generate Summary", function() {
+            generate_summary(frm);
+        });
+    }
+});
+
+function generate_summary(frm) {
+    if (!frm.doc.weaving_raw || frm.doc.weaving_raw.length === 0) {
+        frappe.msgprint("No rows found in Weaving Raw table.");
+        return;
+    }
+
+    // Step 1: Group data by (item_name + brand_name + color_name)
+    let grouped = {};
+
+    frm.doc.weaving_raw.forEach(row => {
+        let key = `${row.item_name || ''}__${row.brand_name || ''}__${row.color_name || ''}`;
+        if (!grouped[key]) {
+            grouped[key] = {
+                item_description: row.item_name || '',
+                brand_name: row.brand_name || '',
+                color_name: row.color_name || '',
+                total_lbs: 0,
+                total_bags: 0
+            };
+        }
+        grouped[key].total_lbs += flt(row.total_lbs);
+        grouped[key].total_bags += flt(row.bags);
+    });
+
+    // Step 2: Clear existing summary table
+    frm.clear_table("sum_table");
+
+    // Step 3: Populate new grouped data
+    Object.values(grouped).forEach(data => {
+        let d = frm.add_child("sum_table");
+        d.item_description = data.item_description;
+        d.brand_name = data.brand_name;
+        d.color_name = data.color_name;
+        d.total_lbs = data.total_lbs;
+        d.total_bags = data.total_bags;
+    });
+
+    frm.refresh_field("sum_table");
+    frappe.msgprint("Summary table updated successfully!");
+}
+
