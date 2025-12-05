@@ -1,0 +1,160 @@
+frappe.ui.form.on('Daily Sales CT', {
+	cylin_qty: function(frm, cdt, cdn) {
+		totalAmount(frm, cdt, cdn);
+// 		totalQty(frm, cdt, cdn);
+	},
+	rate: function(frm, cdt, cdn) {
+		totalAmount(frm, cdt, cdn);
+	}
+});
+
+function totalAmount(frm, cdt, cdn) {
+	const row = locals[cdt][cdn];
+	if (row.cylin_qty && row.rate) {
+		const value = row.cylin_qty * row.rate;
+		frappe.model.set_value(cdt, cdn, 'total_amount', parseFloat(value.toFixed(3)));
+	}
+}
+
+
+frappe.ui.form.on('Daily Sales', {
+    before_save: function(frm) {
+        totalQty(frm);
+        perKgAmount(frm);
+        hospitality(frm);
+    },
+    
+    // onload: function(frm) {
+    //     GrandTotal(frm);
+    // },
+    // validate: function(frm) {
+    //     GrandTotal(frm);
+    // }
+});
+
+function totalQty(frm) {
+    const Items = frm.doc.transactions;
+
+    Items.forEach(function(item) {
+        let weight = 0;
+
+        weight += (parseFloat(item.category1_qty) || 0) * 11.8;
+        weight += (parseFloat(item.category2_qty) || 0) * 35;
+        weight += (parseFloat(item.category3_qty) || 0) * 45.4;
+
+        frappe.model.set_value(item.doctype, item.name, 'qty', parseFloat(weight.toFixed(3)));
+    });
+}
+
+// function GrandTotal(frm) {
+//     const total = parseFloat(frm.doc.total) || 0;
+//     const hospitality = parseFloat(frm.doc.custom_total_hospitality) || 0;
+//     const value = total + hospitality;
+//     frm.set_value('grand_total', parseFloat(value.toFixed(3)));
+// }
+
+function hospitality(frm) {
+    const hospitality_rate = parseFloat(frm.doc.hospitality_rate) || 0;
+
+    frm.doc.transactions.forEach(function(item) {
+        const value = hospitality_rate * item.qty;
+        frappe.model.set_value(item.doctype, item.name, 'total_hospitality', parseFloat(value.toFixed(3)));
+    });
+}
+
+function perKgAmount(frm) {
+    const Items = frm.doc.transactions;
+
+    Items.forEach(function(item) {
+        let cat1_perkg = item.rate;
+        let cat2_perkg = item.rate/11.8*35;
+        let cat3_perkg = item.rate/11.8*45.4;
+        
+        let cat1_amount = cat1_perkg * item.category1_qty;
+        let cat2_amount = cat2_perkg * item.category2_qty;
+        let cat3_amount = cat3_perkg * item.category3_qty;
+        
+        let total_amount = cat1_amount + cat2_amount + cat3_amount;
+        
+        frappe.model.set_value(item.doctype, item.name, 'total_amount', parseFloat(total_amount.toFixed(3)));
+        frappe.model.set_value(item.doctype, item.name, 'category2_rate', parseFloat(cat2_perkg.toFixed(3)));
+        frappe.model.set_value(item.doctype, item.name, 'category3_rate', parseFloat(cat3_perkg.toFixed(3)));
+    });
+}
+
+
+
+frappe.ui.form.on('Daily Sales', {
+    refresh: function(frm) {
+        frm.add_custom_button('Create Invoices', () => {
+            if(!frm.doc.__unsaved){
+                frappe.call({
+                    method: 'create_sales_invoices',
+                    args: {
+                        docname: frm.doc.name
+                    },
+                    callback: function(r) {
+                        if (!r.exc) {
+                            frappe.msgprint(__('Sales Invoices created successfully'));
+                            frappe.set_route("List", "Sales Invoice", "List");
+                        }
+                    }
+                });
+            }
+            else{
+                frm.save().then(() => {
+                     frappe.call({
+                    method: 'create_sales_invoices',
+                    args: {
+                        docname: frm.doc.name
+                    },
+                    callback: function(r) {
+                        if (!r.exc) {
+                            frappe.msgprint(__('Sales Invoices created successfully'));
+                            frappe.set_route("List", "Sales Invoice", "List");
+                        }
+                    }
+                });
+                })
+            }
+        });
+    }
+});
+
+
+frappe.ui.form.on('Daily Sales', {
+    refresh: function(frm) {
+        frm.add_custom_button('Create Journal Entry', () => {
+            if(!frm.doc.__unsaved){
+                frappe.call({
+                    method: 'create_auto_Journal_entry',
+                    args: {
+                        docname: frm.doc.name
+                    },
+                    callback: function(r) {
+                        if (!r.exc) {
+                            frappe.msgprint(__('Journal Entry created successfully'));
+                            frappe.set_route("List", "Journal Entry", "List");
+                        }
+                    }
+                });
+            }
+            else{
+                frm.save().then(() => {
+                     frappe.call({
+                    method: 'create_auto_Journal_entry',
+                    args: {
+                        docname: frm.doc.name
+                    },
+                    callback: function(r) {
+                        if (!r.exc) {
+                            frappe.msgprint(__('Journal Entry created successfully'));
+                            frappe.set_route("List", "Journal Entry", "List");
+                        }
+                    }
+                });
+                })
+            }
+        });
+    }
+});
