@@ -1,0 +1,94 @@
+frappe.ui.form.on('Order Sheet', {
+	refresh(frm) {
+		 if (!frm.is_new()) {
+
+           
+                frm.add_custom_button(
+                    __("Get Items From Sales Order"),
+                    function () {
+                        get_items_from_sales_order(frm);
+                    }
+                );
+            }
+	}
+})
+
+function get_items_from_sales_order(frm) {
+    new frappe.ui.form.MultiSelectDialog({
+        doctype: "Sales Order",
+        target: frm,
+        setters: { 
+            customer: frm.doc.party,
+            //po_no: "",
+            //transaction_date:frm.doc.order_date
+        },
+        date_field: "transaction_date",
+        get_query() {
+            return {
+                filters: {
+                    customer: frm.doc.party,
+                    status: ["!=", "Completed"],
+                    //docstatus: 1,
+                },
+            };
+        },
+        fields: [
+            {
+                fieldtype: "Data",
+                fieldname: "name",
+                label: __("Sales Order"),
+                in_list_view: 1,
+                reqd: 1,
+            },
+            {
+                fieldtype: "Data",
+                fieldname: "po_no",
+                label: __("PO No"),
+                in_list_view: 1,   // show in dialog
+            },
+            {
+                fieldtype: "Date",
+                fieldname: "transaction_date",
+                label: __("Date"),
+                in_list_view: 1,
+            },
+        ],
+        action(selections) {
+            if (selections.length) {
+                frappe.call({
+                    method: "get_sales_order_items_with_balances",
+                    args: {
+                        sales_orders: selections,
+                        order_date: frm.doc.order_date,
+                    },
+                    callback: function (r) {
+                        if (r.message) {
+                            frm.clear_table("order_items");
+                            r.message.forEach((row) => {
+                                let child = frm.add_child("order_items");
+                                child.item_code = row.item_code;
+                                child.item_name = row.item_name;
+                                child.pkt = row.qty;
+                                 child.pcs = row.pcs;
+                                  child.ctn = row.ctn;
+                                child.unit = row.uom;
+                                child.sales_order = row.sales_order;
+                                child.fg_stock_pkt = row.balance_qty;
+                                child.fg_stock_expiry = row.fg_stock_expiry;
+                                child.fg_stock_pcs = row.fg_stock_pcs;
+                                child.warehouse = row.warehouse;
+                               
+                            });
+                            frm.refresh_field("order_items");
+                            cur_dialog.hide();
+                            frappe.show_alert({
+                                message: __("Form updated successfully"),
+                                indicator: "green",
+                            });
+                        }
+                    },
+                });
+            }
+        },
+    });
+}
