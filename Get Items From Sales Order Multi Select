@@ -92,3 +92,95 @@ function get_items_from_sales_order(frm) {
         },
     });
 }
+
+
+/// Server Script //////////////////////////////////////////////////////////////////////////////////////////////
+
+sales_orders = frappe.form_dict.sales_orders
+sales_orders = json.loads(sales_orders)
+receiving_date = frappe.form_dict.order_date
+
+
+def get_stock_balance(item_code,source_warehouse, order_date):
+    balance_qty = frappe.db.sql("""
+        SELECT qty_after_transaction AS qty
+        FROM `tabStock Ledger Entry`
+        WHERE item_code = %s
+            AND is_cancelled = 0
+            AND warehouse = %s
+            AND posting_date <= %s
+        ORDER BY posting_date DESC
+        LIMIT 1
+    """, (item_code, source_warehouse, order_date), as_dict=1)
+
+    return float(balance_qty[0].qty) if balance_qty else 0
+
+
+def get_received_quantity_from_ct(sales_order, item_code):
+    received_qty = frappe.db.sql("""
+        SELECT SUM(pkt) AS qty
+        FROM `tabOrder Sheet CT`
+        WHERE sales_order = %s
+          AND item_code = %s
+    """, (sales_order, item_code), as_dict=1)
+
+    return float(received_qty[0].qty or 0) if received_qty else 0
+
+
+# --- MAIN LOGIC ---
+grouped_items = {}
+
+for so_name in sales_orders:
+    sales_order = frappe.get_doc("Sales Order", so_name)
+
+    # Step 1: aggregate all items by item_code
+    item_summary = {}
+
+    for item in sales_order.items:
+        item_code = item.item_code
+        if not item_code:
+            continue
+
+        if item_code not in item_summary:
+            item_summary[item_code] = {
+                "item_name": item.item_name,
+                "rate": item.rate or 0,
+                "warehouse": item.warehouse,
+                "uom": item.uom,
+                "qty": item.qty,
+                "pcs": item.custom_pcs,
+                "ctn": item.custom_carton_qty or 0,
+                "box": item.custom_box or 0,
+            }
+        else:
+            item_summary[item_code]["qty"] = item_summary[item_code]["qty"] + (item.qty or 0)
+            item_summary[item_code]["pcs"] = item_summary[item_code]["pcs"] + (item.custom_pcs or 0)
+            item_summary[item_code]["ctn"] = item_summary[item_code]["ctn"] + (item.custom_carton_qty or 0)
+            item_summary[item_code]["box"] = item_summary[item_code]["box"] + (item.custom_box or 0)
+
+    # Step 2: for each item_code, get how much was already received
+    for item_code, data in item_summary.items():
+        received_qty = get_received_quantity_from_ct(so_name, item_code)
+        balance_qty = float(data["qty"]) - float(received_qty)
+        if balance_qty <= 0:
+            continue
+
+        grouped_items[(so_name, item_code)] = {
+            "sales_order": so_name,
+            "item_code": item_code,
+            "item_name": data["item_name"],
+            "qty": data["qty"],
+            "balance_qty": get_stock_balance(item_code, data["warehouse"],sales_order.transaction_date),
+            "pcs": data["pcs"],
+            "ctn": data["ctn"],
+            "warehouse": data["warehouse"],
+            "uom": data["uom"],
+            "box": data["box"],
+            "fg_stock_expiry":frappe.db.get_value("Batch", {"item":item_code,"disabled":0}, "expiry_date", 
+                                order_by="creation DESC"),
+            "fg_stock_pcs":0
+        }
+
+# --- RESPONSE ---
+frappe.response["message"] = list(grouped_items.values())
+
