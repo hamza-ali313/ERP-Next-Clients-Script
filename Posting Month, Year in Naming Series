@@ -1,0 +1,52 @@
+frappe.ui.form.on('Payment Entry', {
+    custom_pay_type: function(frm) {
+        set_series(frm);
+    },
+    before_save: function(frm) {
+        set_series(frm);
+    }
+});
+
+function set_series(frm){
+        var pay = frm.doc.custom_pay_type;
+        if (pay === 'Bank Receive') {
+            frm.set_value('naming_series', 'ACC-BR-.{posting_month}.-.{posting_year}.-.###');
+        } 
+        else if (pay === 'Cash Receive') {
+            frm.set_value('naming_series', 'ACC-CR-.{posting_month}.-.{posting_year}.-.###');
+        } 
+        else if (pay === 'Cash Payment') {
+            frm.set_value('naming_series', 'ACC-CP-.{posting_month}.-.{posting_year}.-.###');
+        } 
+        else if (pay === 'Bank Payment') {
+            frm.set_value('naming_series', 'ACC-BP-.{posting_month}.-.{posting_year}.-.###');
+        }
+}
+
+frappe.ui.form.on("Payment Entry", {
+    posting_date:function(frm) {
+        set_postingMonth(frm);
+    },
+    before_save:function(frm) {
+        set_postingMonth(frm);
+    }
+});
+
+function set_postingMonth(frm){
+        if (frm.doc.posting_date) {
+            // Convert the posting date string into a JavaScript Date object
+            let postingDate = frappe.datetime.str_to_obj(frm.doc.posting_date);
+
+            // Extract the month number (0 = Jan, 11 = Dec, so add +1)
+            let monthNumber = postingDate.getMonth() + 1;
+            let year = postingDate.getFullYear();
+
+            // Optional: Add leading zero for consistency (e.g., "01", "02", ... "12")
+            monthNumber = ("0" + monthNumber).slice(-2);
+
+            // Set the extracted month number into your custom field
+            frm.set_value('posting_month', monthNumber);
+            frm.set_value('posting_year', year);
+        }
+
+}
