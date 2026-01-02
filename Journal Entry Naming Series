@@ -1,0 +1,65 @@
+// frappe.ui.form.on('Journal Entry', {
+//     before_insert: function(frm) {
+//         // Save hone se pehle double-check (safety)
+//         if (frm.is_new()) {
+//             if (frm.doc.voucher_type === "Journal Entry") {
+//                 frm.set_value('naming_series', 'ACC-JV-.{posting_month}.-.{posting_year}.-.###');
+//             }
+//             else if (frm.doc.voucher_type === "Bank Entry" && frm.doc.custom_type === "Pay") {
+//                 frm.set_value('naming_series', 'ACC-JV-BP-.{posting_month}.-.{posting_year}.-.###');
+//             } 
+//             else if (frm.doc.voucher_type === "Cash Entry" && frm.doc.custom_type === "Pay") {
+//                 frm.set_value('naming_series', 'ACC-JV-CP-.{posting_month}.-.{posting_year}.-.###');
+//             }
+//             else if (frm.doc.voucher_type === "Bank Entry" && frm.doc.custom_type === "Receive") {
+//                 frm.set_value('naming_series', 'ACC-JV-BR-.{posting_month}.-.{posting_year}.-.###');
+//             }
+//             else if (frm.doc.voucher_type === "Cash Entry" && frm.doc.custom_type === "Receive") {
+//                 frm.set_value('naming_series', 'ACC-JV-CR-.{posting_month}.-.{posting_year}.-.###');
+//             }
+//              else if (frm.doc.voucher_type === "Opening Entry" && frm.doc.custom_type === "") {
+//                 frm.set_value('naming_series', 'ACC-JV-OE.-.###');
+//             }
+//             else if (frm.doc.voucher_type === "Debit Note" && frm.doc.custom_type === "") {
+//                 frm.set_value('naming_series', 'ACC-JV-DN-.{posting_month}.-.{posting_year}.-.###');
+//             }
+//             else if (frm.doc.voucher_type === "Credit Note" && frm.doc.custom_type === "") {
+//                 frm.set_value('naming_series', 'ACC-JV-CN-.{posting_month}.-.{posting_year}.-.###');
+//             } 
+//             else {
+//                 frm.set_value('naming_series', 'ACC-JV-.{posting_month}.-.{posting_year}.-.###');
+//             }
+            
+//         }
+//     }
+// });
+
+
+// frappe.ui.form.on("Journal Entry", {
+//     posting_date:function(frm) {
+//         set_postingMonth(frm);
+//     },
+//     before_save:function(frm) {
+//         set_postingMonth(frm);
+//     }
+// });
+
+// function set_postingMonth(frm){
+//         if (frm.doc.posting_date) {
+//             // Convert the posting date string into a JavaScript Date object
+//             let postingDate = frappe.datetime.str_to_obj(frm.doc.posting_date);
+
+//             // Extract the month number (0 = Jan, 11 = Dec, so add +1)
+//             let monthNumber = postingDate.getMonth() + 1;
+//             let year = postingDate.getFullYear();
+
+//             // Optional: Add leading zero for consistency (e.g., "01", "02", ... "12")
+//             monthNumber = ("0" + monthNumber).slice(-2);
+
+//             // Set the extracted month number into your custom field
+//             frm.set_value('posting_month', monthNumber);
+//             frm.set_value('posting_year', year);
+//             console.log(frm.doc.posting_year);
+//         }
+
+// }
