@@ -1,0 +1,20 @@
+frappe.ui.form.on('Order Sheet', {
+    onload: function(frm) {
+
+        let items_list = (frm.doc.order_items || []).map(row => row.item_code);
+        frm.set_query('item', 'pack_req_ct', function(frm, cdt, cdn) {
+            return {
+                filters: {
+                    name: ['in', items_list]  // safer than 'name'
+                }
+            };
+        });
+        frm.set_query('item', 'schedule_ct', function(frm, cdt, cdn) {
+            return {
+                filters: {
+                    name: ['in', items_list]  // safer than 'name'
+                }
+            };
+        });
+    }
+});
