@@ -1,0 +1,103 @@
+// 2️⃣ Auto-fetch data when item is selected from above Child Table Order Sheet CT
+frappe.ui.form.on('Packing Requisition CT', {
+    item: function(frm, cdt, cdn) {
+        let row = locals[cdt][cdn];
+
+        // Find matching item in order_items table
+        let matched = (frm.doc.order_items || []).find(r => r.item_code === row.item);
+
+        if (matched) {
+            // Auto-fill batch, required qty, balance
+            frappe.model.set_value(cdt, cdn, 'batch_no', matched.batch_no);
+            frappe.model.set_value(cdt, cdn, 'total_order', matched.total_pkt);
+            frappe.model.set_value(cdt, cdn, 'order_no', matched.sales_order);
+            frappe.model.set_value(cdt, cdn, 'produce_code', matched.produce_code);
+            
+            // Fetch batch data
+            frappe.db.get_value('Batch', matched.batch_no,
+                ['manufacturing_date', 'expiry_date']
+            ).then(r => {
+
+                if (r.message) {
+                    frappe.model.set_value(cdt, cdn, 'mfg_date', r.message.manufacturing_date);
+                    frappe.model.set_value(cdt, cdn, 'expiry_date', r.message.expiry_date);
+                }
+
+            });
+        }
+    },
+
+    // 3️⃣ Optional: Update balance dynamically as user enters printed qty
+    print_qty_req: function(frm, cdt, cdn) {
+        let row = locals[cdt][cdn];
+
+        if (!row.print_qty_req) return;
+
+        let matched = (frm.doc.order_items || []).find(r => r.item_code === row.item);
+
+        if (matched) {
+            // Update balance in this row
+            let total_printed = 0;
+
+            // Sum print_qty_req for same item in child table
+            (frm.doc.pack_req_ct || []).forEach(r => {
+                if (r.item === row.item) {
+                    total_printed += flt(r.print_qty_req);
+                }
+            });
+    
+            // Update total printed qty
+            frappe.model.set_value(cdt, cdn, 'total_printed_qty', total_printed);
+    
+            // Calculate balance
+            let balance = flt(row.total_order) - total_printed;
+    
+            frappe.model.set_value(cdt, cdn, 'balance', balance);
+        }
+    }
+});
+
+
+frappe.ui.form.on('Schedule CT', {
+    item: function(frm, cdt, cdn) {
+        let row = locals[cdt][cdn];
+
+        // Find matching item in order_items table
+        let matched = (frm.doc.order_items || []).find(r => r.item_code === row.item);
+
+        if (matched) {
+            // Auto-fill batch, required qty, balance
+            frappe.model.set_value(cdt, cdn, 'order_ctns', matched.total_ctn);
+            frappe.model.set_value(cdt, cdn, 'stock_pcs', matched.fg_stock_pcs);
+            frappe.model.set_value(cdt, cdn, 'total_batches', matched.batch_qty);
+            
+        }
+    },
+
+    issue_batch: function(frm, cdt, cdn) {
+        let row = locals[cdt][cdn];
+
+        if (!row.issue_batch) return;
+
+        let matched = (frm.doc.order_items || []).find(r => r.item_code === row.item);
+
+        if (matched) {
+            // Update balance in this row
+            let total_printed = 0;
+
+            // Sum print_qty_req for same item in child table
+            (frm.doc.schedule_ct || []).forEach(r => {
+                if (r.item === row.item) {
+                    total_issued += flt(r.issued_batches);
+                }
+            });
+    
+            frappe.model.set_value(cdt, cdn, 'total_printed_qty', total_issued);
+    
+            // Calculate balance
+            let balance = flt(row.total_issued) - issued_batches;
+    
+            frappe.model.set_value(cdt, cdn, 'balance', balance);
+        }
+    }
+});
