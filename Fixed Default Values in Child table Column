@@ -1,0 +1,99 @@
+frappe.ui.form.on("Clearance Form", {
+    onload(frm) {
+
+        if (frm.is_new()) {
+
+            let rows = [
+                "Mobile Set",
+                "Mobile Connection",
+                "EOBI/SESSI Deletion",
+                "Reimbursements (If Any)",
+                "Company ID card",
+                "Health Insurance Card",
+                "Attendance Card",
+                "Setup Exit Interview",
+                "Any other belonging (If Any)"
+            ];
+            
+           
+            let row1 = [
+                "Documents and Records (If Any)",
+                "All kinds of keys issued",
+                "Bottle deposits (If Any)",
+                "Any other company belongings"
+            ];
+            
+            let row2 = [
+                "Desktop/Laptop computer",
+                "Printer",
+                "Other Devices",
+                "Software",
+                "O.S Coupon Book",
+                "Water Deduction"
+            ];
+            
+            let row3 = [
+                "Desktop/Laptop Computer",
+                "Printer",
+                "Other Devices",
+                "Software"
+            ];
+            
+            let row4 = [
+                "Loan",
+                "Float Money",
+                "Advances",
+                "Terminated Bank Sign",
+                "Mobile Phone Bill"
+            ];
+            
+            let row5 = [
+                "PPE's",
+                "Company Uniform & Shoes",
+                "Tools/Material",
+                "Others"
+            ];
+            
+            rows.forEach(d => {
+                let row = frm.add_child("hr_administration");
+                row.employee_relevant = d;
+
+            });
+            row1.forEach(d => {
+                let row = frm.add_child("employee_relevant");
+                row.employee_relevant = d;
+
+            });
+            row2.forEach(d => {
+                let row = frm.add_child("mis_department");
+                row.employee_relevant = d;
+
+            });
+            
+            row3.forEach(d => {
+                let row = frm.add_child("it");
+                row.employee_relevant = d;
+
+            });
+            
+            row4.forEach(d => {
+                let row = frm.add_child("finance_department");
+                row.employee_relevant = d;
+
+            });
+            
+            row5.forEach(d => {
+                let row = frm.add_child("st");
+                row.employee_relevant = d;
+
+            });
+
+            frm.refresh_field("employee_relevant");
+            frm.refresh_field("mis_department");
+            frm.refresh_field("it");
+            frm.refresh_field("finance_department");
+            frm.refresh_field("hr_administration");
+            frm.refresh_field("st");
+        }
+    }
+});
