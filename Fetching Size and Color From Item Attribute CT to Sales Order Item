@@ -1,0 +1,28 @@
+frappe.ui.form.on("Sales Order Item", {
+    item_code: function(frm, cdt, cdn) {
+        let row = locals[cdt][cdn];
+        
+        if (row.item_code) {
+            // Fetch all matching attributes for this specific item code
+            frappe.db.get_list("Item Variant Attribute", {
+                filters: {
+                    parent: row.item_code,
+                    attribute: ["in", ["Size", "Color"]] // Looks for both fields at once
+                },
+                fields: ["attribute", "attribute_value"]
+            }).then(records => {
+                if (records && records.length > 0) {
+                    // Loop through the results to map them to the correct fields
+                    records.forEach(attr => {
+                        if (attr.attribute === "Size") {
+                            frappe.model.set_value(cdt, cdn, "size", attr.attribute_value);
+                        }
+                        if (attr.attribute === "Color") {
+                            frappe.model.set_value(cdt, cdn, "color", attr.attribute_value);
+                        }
+                    });
+                }
+            });
+        }
+    }
+});
