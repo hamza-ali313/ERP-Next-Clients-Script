@@ -1,0 +1,205 @@
+frappe.ui.form.on("Sales Order", {
+    before_save: async function(frm) {
+
+        for (let row of frm.doc.items || []) {
+
+            if (row.item_code) {
+
+                let records = await frappe.db.get_list("Item Variant Attribute", {
+                    filters: {
+                        parent: row.item_code
+                    },
+                    fields: ["attribute", "attribute_value"]
+                });
+
+                if (records && records.length) {
+
+                    records.forEach(attr => {
+
+                        if (attr.attribute === "Size") {
+                            frappe.model.set_value(
+                                row.doctype,
+                                row.name,
+                                "size",
+                                attr.attribute_value
+                            );
+                        }
+
+                        if (attr.attribute === "Colour" || attr.attribute === "Color") {
+                            frappe.model.set_value(
+                                row.doctype,
+                                row.name,
+                                "color",
+                                attr.attribute_value
+                            );
+                        }
+
+                    });
+                }
+            }
+        }
+
+        frm.refresh_field("items");
+    }
+});
+
+
+
+
+
+
+
+
+frappe.ui.form.on("Sales Order", {
+    before_save: function(frm) {
+
+        (frm.doc.items || []).forEach(function(row) {
+            calculate_volume(frm, row.doctype, row.name)
+        });
+    }
+});
+
+
+frappe.ui.form.on("Sales Order Item", {
+    length: calculate_volume,
+    width: calculate_volume,
+    height: calculate_volume
+});
+
+function calculate_volume(frm, cdt, cdn) {
+    let row = locals[cdt][cdn];
+console.log(row.length, row.width, row.height);
+    let volume =
+        (flt(row.length) || 0) *
+        (flt(row.width) || 0) *
+        (flt(row.height) || 0);
+
+    frappe.model.set_value(cdt, cdn, "volume_sum", volume);
+}
+
+
+
+
+
+
+frappe.ui.form.on("Sales Order", {
+    before_save: function(frm) {
+
+        let size_totals = {};
+        let color_totals = {};
+
+        (frm.doc.items || []).forEach(row => {
+
+            let size = row.size;
+            let color = row.color;
+            let qty = flt(row.qty);
+
+            if (size) {
+                size_totals[size] = (size_totals[size] || 0) + qty;
+            }
+
+            if (color) {
+                color_totals[color] = (color_totals[color] || 0) + qty;
+            }
+        });
+
+        // Clear existing summary rows
+        frm.clear_table("size_wise");
+        frm.clear_table("color_wise");
+
+        // Add Size Summary
+        Object.keys(size_totals).forEach(size => {
+
+            let child = frm.add_child("size_wise");
+
+            child.size = size;
+            child.qty = size_totals[size];
+        });
+
+        // Add Color Summary
+        Object.keys(color_totals).forEach(color => {
+
+            let child = frm.add_child("color_wise");
+
+            child.color = color;
+            child.qty = color_totals[color];
+            child.doz = color_totals[color] / 12;
+        });
+
+        frm.refresh_field("size_wise");
+        frm.refresh_field("color_wise");
+
+        console.log("Size Totals", size_totals);
+        console.log("Color Totals", color_totals);
+    }
+});
+
+
+
+
+frappe.ui.form.on("Sales Order", {
+    before_save: function(frm) {
+
+        let cbm_totals = {};
+
+        (frm.doc.items || []).forEach(row => {
+
+            let volume = flt(row.volume_sum);
+            let pcs_per_ctn = flt(row.pcs_per_ctn);
+            let length = flt(row.length);
+            let width = flt(row.width);
+            let height = flt(row.height);
+            let qty = flt(row.qty);
+            let size = row.size;
+
+            let key = `${volume}|${pcs_per_ctn}|${length}|${width}|${height}`;
+
+            if (!cbm_totals[key]) {
+                cbm_totals[key] = {
+                    sizes: [],
+                    volume: volume,
+                    pcs_per_ctn: pcs_per_ctn,
+                    length: length,
+                    width: width,
+                    height: height,
+                    qty: 0
+                };
+            }
+
+            cbm_totals[key].qty += qty;
+            if (size && !cbm_totals[key].sizes.includes(size)) {
+                cbm_totals[key].sizes.push(size);
+            }
+        });
+        
+        // Clear summary table first
+        frm.clear_table("cbm");
+
+        Object.values(cbm_totals).forEach(cbm => {
+
+            let child = frm.add_child("cbm");
+            
+            child.sizes = cbm.sizes.join(", ");
+            child.length = cbm.length;
+            child.width = cbm.width;
+            child.height = cbm.height;
+            child.volume_sum = cbm.volume;
+            child.pcs_per_ctn = cbm.pcs_per_ctn;
+            // Total PCS
+            child.pcs = cbm.qty;
+
+            // Total CTN
+            child.ctn = cbm.pcs_per_ctn
+                ? cbm.qty / cbm.pcs_per_ctn
+                : 0;
+
+            // Total Dozens
+            child.doz = cbm.qty / 12;
+            child.cbm_v = child.volume_sum / 61023.75 * child.ctn;
+        });
+
+        frm.refresh_field("cbm");
+
+        // console.log(cbm_totals);
+    }
+});
