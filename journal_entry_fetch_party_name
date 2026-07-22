@@ -1,0 +1,46 @@
+// Helper function to fetch and set the party name safely
+function fetch_party_name(cdt, cdn) {
+    var child = locals[cdt][cdn];
+    
+    if (child.party_type && child.party) {
+        // Map the correct field name according to the Party Type
+        let target_field = 'party_name'; 
+        if (child.party_type === 'Customer') {
+            target_field = 'customer_name';
+        } else if (child.party_type === 'Supplier') {
+            target_field = 'supplier_name';
+        } else if (child.party_type === 'Employee') {
+            target_field = 'employee_name';
+        }
+
+        frappe.db.get_value(child.party_type, child.party, target_field, (r) => {
+            if (r && r[target_field]) {
+                frappe.model.set_value(cdt, cdn, 'custom_party_name', r[target_field]);
+            }
+        });
+    } else {
+        frappe.model.set_value(cdt, cdn, 'custom_party_name', '');
+    }
+}
+
+// Parent DocType Triggers
+frappe.ui.form.on('Journal Entry', {
+    before_save: function(frm) {
+        if (frm.doc.accounts) {
+            frm.doc.accounts.forEach(function(row) {
+                fetch_party_name(row.doctype, row.name);
+            });
+        }
+    }
+});
+
+// Child DocType Triggers
+frappe.ui.form.on('Journal Entry Account', {
+    party: function(frm, cdt, cdn) {
+        fetch_party_name(cdt, cdn);
+    },
+    party_type: function(frm, cdt, cdn) {
+        frappe.model.set_value(cdt, cdn, 'party', '');
+        frappe.model.set_value(cdt, cdn, 'custom_party_name', '');
+    }
+});
