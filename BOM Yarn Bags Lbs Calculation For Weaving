@@ -1,0 +1,31 @@
+const WASTAGE_RATE = 0.035;   // 3.5%
+const KG_TO_LBS = 2.2046;
+const LBS_PER_BAG = 100;
+
+function calc_block(frm, source, prefix) {
+    if(frm.doc.custom_greigh_weight){
+        const qty = flt(frm.doc.quantity);
+        const greigh_weight = flt(frm.doc.custom_greigh_weight);
+        console.log(greigh_weight)
+        const total_weight = (greigh_weight * qty) / 1000;
+        const wastage = total_weight * WASTAGE_RATE;
+        const g_total_weight = total_weight + wastage;
+        const lbs = g_total_weight * KG_TO_LBS;
+        const bags = lbs / LBS_PER_BAG;
+        console.log(bags, wastage)
+        frm.set_value("custom_total_weight", flt(total_weight, 4));
+        frm.set_value("custom_35_wastage", flt(wastage, 4));
+        frm.set_value("custom_gtotal_weight", flt(g_total_weight, 4));
+        frm.set_value("custom_yarn__lbs", flt(lbs, 4));
+        frm.set_value("custom_yarn_bags", flt(bags, 4));
+    }
+}
+
+frappe.ui.form.on("BOM", {
+    quantity:function(frm){
+        calc_block(frm);
+    },
+    item:function(frm){
+        calc_block(frm);
+    },
+});
